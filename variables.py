@@ -11,5 +11,5 @@ class httpHeaders():
 
 
 class httpLinks():
-    DOMAIN = "http://10.10.1.2:8000"
+    DOMAIN = "http://localhost:8000"
     AUTHTOKEN = "/api/v1/auth/token/"
