@@ -11,5 +11,5 @@ class httpHeaders():
 
 
 class httpLinks():
-    DOMAIN = "http://localhost:8000"
+    DOMAIN = "https://backend.princeofprocrastination.art"
     AUTHTOKEN = "/api/v1/auth/token/"
