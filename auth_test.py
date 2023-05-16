@@ -102,7 +102,7 @@ def test_delete_specialists():
 @pytest.mark.xfail
 def test_del_all():
     deleted = False
-    for i in range(100, 200):
+    for i in range(0, 20):
         r, data = HttpFunctions.apidelete(link=httpLinks.SPECIALISTSID % i, body='')
         if r.status == 204:
             deleted = True
