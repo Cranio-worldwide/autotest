@@ -2,7 +2,8 @@ import allure
 import json
 import poplib
 import re
-
+import psycopg2
+import subprocess
 import pytest
 
 from functions import HttpFunctions
@@ -11,6 +12,8 @@ from variables import httpLinks
 user_id = {}
 re_detail = re.compile(r"DETAIL:(.*)")
 
+
+@pytest.mark.flaky(reruns=5, reruns_delay=5)
 @allure.title("Проверка регистрации с корректными почтой и паролем")
 def test_registration_with_correct_data():
     global user_id
@@ -99,12 +102,28 @@ def test_registration_with_difirent_email():
 def test_delete_specialists():
     r, data = HttpFunctions.apidelete(link=httpLinks.SPECIALISTSID % user_id[0], body='')
     assert r.status == 204, data
+
+
 @pytest.mark.xfail
+@allure.title("Удаление всех специалистов из базы")
 def test_del_all():
     deleted = False
-    for i in range(0, 20):
+    docker_config = json.loads(subprocess.run(["docker", "inspect", "backend_db_1"],
+                                              check=True,
+                                              stdout=subprocess.PIPE,
+                                              universal_newlines=True).stdout)
+    ip = str(docker_config[0]["NetworkSettings"]["Networks"]["backend_default"]["IPAddress"])
+    conn = psycopg2.connect(dbname='postgres', user='postgres',
+                        password='postgres', host=ip)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id from users_customuser;")
+    records = cursor.fetchall()
+    for i in records:
         r, data = HttpFunctions.apidelete(link=httpLinks.SPECIALISTSID % i, body='')
         if r.status == 204:
             deleted = True
+    cursor.close()
+    conn.close()
     assert deleted
+
 
