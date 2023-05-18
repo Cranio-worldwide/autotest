@@ -3,7 +3,7 @@ import json
 import poplib
 import re
 import psycopg2
-import subprocess
+
 import pytest
 
 from functions import HttpFunctions
@@ -13,13 +13,12 @@ user_id = {}
 re_detail = re.compile(r"DETAIL:(.*)")
 
 
-@pytest.mark.flaky(reruns=5, reruns_delay=5)
+# @pytest.mark.flaky(reruns=5, reruns_delay=5)
 @allure.title("Проверка регистрации с корректными почтой и паролем")
 def test_registration_with_correct_data():
     global user_id
-    reg_data = {"email": "root@princeofprocrastination.art",
-                "password": "7sadtcKE"}
-    body = json.dumps(reg_data)
+    reg_data = {"email": "root@princeofprocrastination.art", "password": "7sadtcKE"}
+    body = json.dumps(reg_data, sort_keys=True, indent=4)
     r, data = HttpFunctions.apipost(link=httpLinks.AUTHREGISTER, body=body)
     if type(data) is dict:
         if 'id' in data:
@@ -37,13 +36,13 @@ def test_registration_with_correct_data():
 def test_wrong_login_password():
     data = {"email": "email@example.com",
             "password": "password"}
-    body = json.dumps(data)
+    body = json.dumps(data, sort_keys=True, indent=4)
     r, data = HttpFunctions.apipost(link=httpLinks.AUTHTOKEN, body=body)
-    if r.status == 401 and data['detail'] == "Не найдено активной учетной записи с указанными данными":
+    if r.status == 401 and data['detail'] == "No active account found with the given credentials":
         assert True
     elif r.status != 401:
         assert False, "Статус %s, Должен быть 401" % r.status
-    elif data['detail'] != "Не найдено активной учетной записи с указанными данными":
+    elif data['detail'] != "No active account found with the given credentials":
         assert False, "Надпись %s" % data['detail']
 
 
@@ -67,15 +66,20 @@ def test_auth_token():
                     if 'error' in data:
                         data = data['error']
                 assert r.status == 200, data
-        Mailbox.dele(i + 1)
+        try:
+            Mailbox.dele(i + 1)
+        except:
+            pass
     Mailbox.quit()
+
+
 
 
 @allure.title("Проверка повторной регистрации с тем же логином и паролем")
 def test_registration_with_same_email():
     data = {"email": "root@princeofprocrastination.art",
             "password": "7s|adtcKE#14Pjt#Ku~z$J#@"}
-    body = json.dumps(data)
+    body = json.dumps(data, sort_keys=True, indent=4)
     r, data = HttpFunctions.apipost(link=httpLinks.AUTHREGISTER, body=body)
     if type(data) is dict:
         returned_str = data
@@ -88,7 +92,7 @@ def test_registration_with_same_email():
 def test_registration_with_difirent_email():
     data = {"email": "webmaster@princeofprocrastination.art",
             "password": "7s|adtcKE#14Pjt#Ku~z$J#@"}
-    body = json.dumps(data)
+    body = json.dumps(data, sort_keys=True, indent=4)
     r, data = HttpFunctions.apipost(link=httpLinks.AUTHREGISTER, body=body)
     if type(data) is dict:
         user_id[0] = data['id']
@@ -104,26 +108,41 @@ def test_delete_specialists():
     assert r.status == 204, data
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @allure.title("Удаление всех специалистов из базы")
 def test_del_all():
     deleted = False
-    docker_config = json.loads(subprocess.run(["docker", "inspect", "backend_db_1"],
-                                              check=True,
-                                              stdout=subprocess.PIPE,
-                                              universal_newlines=True).stdout)
-    ip = str(docker_config[0]["NetworkSettings"]["Networks"]["backend_default"]["IPAddress"])
+    ip = HttpFunctions.getPostgresIP()
     conn = psycopg2.connect(dbname='postgres', user='postgres',
-                        password='postgres', host=ip)
+                            password='postgres', host=ip)
     cursor = conn.cursor()
     cursor.execute("SELECT id from users_customuser;")
     records = cursor.fetchall()
-    for i in records:
-        r, data = HttpFunctions.apidelete(link=httpLinks.SPECIALISTSID % i, body='')
-        if r.status == 204:
-            deleted = True
-    cursor.close()
-    conn.close()
-    assert deleted
+    print(len(records))
+    if len(records) == 0:
+        print('No records in DB')
+        cursor.close()
+        conn.close()
+        assert True
+    else:
+        print("Found Records")
+        for i in records:
+            print(i)
+            r, data = HttpFunctions.apidelete(link=httpLinks.SPECIALISTSID % i, body='')
+            if r.status == 204:
+                deleted = True
+        cursor.close()
+        conn.close()
+        assert deleted
 
 
+@allure.title("Очистка почтового ящика")
+def test_remove_mail():
+    user = 'root@princeofprocrastination.art'
+    Mailbox = poplib.POP3_SSL('10.10.1.2', '995')
+    Mailbox.user(user)
+    Mailbox.pass_('passw0rd')
+    numMessages = len(Mailbox.list()[1])
+    for i in range(numMessages):
+            Mailbox.dele(i + 1)
+    Mailbox.quit()
