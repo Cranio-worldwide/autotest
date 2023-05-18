@@ -1,5 +1,6 @@
 import urllib3
 import json
+import subprocess
 from variables import httpLinks
 from variables import httpHeaders
 
@@ -21,6 +22,7 @@ class HttpFunctions:
     @staticmethod
     def apiget(link, body):
         http = urllib3.PoolManager()
+        print(link,body)
         r = http.request('GET', "%s%s" % (httpLinks.DOMAIN, link),
                          fields=body,
                          headers=httpHeaders.ACCEPTHEADERS)
@@ -43,6 +45,7 @@ class HttpFunctions:
 
     @staticmethod
     def apidelete(link, body):
+        print(link, body)
         http = urllib3.PoolManager()
         r = http.request('DELETE', "%s%s" % (httpLinks.DOMAIN, link),
                          fields=body,
@@ -64,4 +67,20 @@ class HttpFunctions:
             data = r.data.decode("utf-8")
         return r, data
 
+    @staticmethod
+    def getPostgresIP():
+        docker_config = json.loads(subprocess.run(["docker", "inspect", "backend_db_1"],
+                                                  check=True,
+                                                  stdout=subprocess.PIPE,
+                                                  universal_newlines=True).stdout)
+        ip = str(docker_config[0]["NetworkSettings"]["Networks"]["backend_default"]["IPAddress"])
+        return ip
 
+    @staticmethod
+    def getBackendIP():
+        docker_config = json.loads(subprocess.run(["docker", "inspect", "backend_backend_1"],
+                                                  check=True,
+                                                  stdout=subprocess.PIPE,
+                                                  universal_newlines=True).stdout)
+        ip = str(docker_config[0]["NetworkSettings"]["Networks"]["backend_default"]["IPAddress"])
+        return ip
