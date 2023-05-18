@@ -25,7 +25,7 @@ class httpHeaders:
 
 
 class httpLinks:
-    DOMAIN = "http://10.10.1.2:8000"
+    DOMAIN = "http://localhost:8000"
     AUTHREGISTER = "/api/v1/auth/register/"
     AUTHTOKEN = "/api/v1/auth/token/"
     AUTHREFRESH = "/api/v1/auth/token/refresh/"
